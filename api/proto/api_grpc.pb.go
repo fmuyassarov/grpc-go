@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type APIServiceClient interface {
 	API(ctx context.Context, in *APIRequest, opts ...grpc.CallOption) (*APIResponse, error)
+	APIS(ctx context.Context, in *APIRequest, opts ...grpc.CallOption) (APIService_APISClient, error)
 }
 
 type aPIServiceClient struct {
@@ -42,11 +43,44 @@ func (c *aPIServiceClient) API(ctx context.Context, in *APIRequest, opts ...grpc
 	return out, nil
 }
 
+func (c *aPIServiceClient) APIS(ctx context.Context, in *APIRequest, opts ...grpc.CallOption) (APIService_APISClient, error) {
+	stream, err := c.cc.NewStream(ctx, &APIService_ServiceDesc.Streams[0], "/api.APIService/APIS", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aPIServiceAPISClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type APIService_APISClient interface {
+	Recv() (*APIResponse, error)
+	grpc.ClientStream
+}
+
+type aPIServiceAPISClient struct {
+	grpc.ClientStream
+}
+
+func (x *aPIServiceAPISClient) Recv() (*APIResponse, error) {
+	m := new(APIResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // APIServiceServer is the server API for APIService service.
 // All implementations must embed UnimplementedAPIServiceServer
 // for forward compatibility
 type APIServiceServer interface {
 	API(context.Context, *APIRequest) (*APIResponse, error)
+	APIS(*APIRequest, APIService_APISServer) error
 	mustEmbedUnimplementedAPIServiceServer()
 }
 
@@ -56,6 +90,9 @@ type UnimplementedAPIServiceServer struct {
 
 func (UnimplementedAPIServiceServer) API(context.Context, *APIRequest) (*APIResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method API not implemented")
+}
+func (UnimplementedAPIServiceServer) APIS(*APIRequest, APIService_APISServer) error {
+	return status.Errorf(codes.Unimplemented, "method APIS not implemented")
 }
 func (UnimplementedAPIServiceServer) mustEmbedUnimplementedAPIServiceServer() {}
 
@@ -88,6 +125,27 @@ func _APIService_API_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _APIService_APIS_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(APIRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(APIServiceServer).APIS(m, &aPIServiceAPISServer{stream})
+}
+
+type APIService_APISServer interface {
+	Send(*APIResponse) error
+	grpc.ServerStream
+}
+
+type aPIServiceAPISServer struct {
+	grpc.ServerStream
+}
+
+func (x *aPIServiceAPISServer) Send(m *APIResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // APIService_ServiceDesc is the grpc.ServiceDesc for APIService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +158,12 @@ var APIService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _APIService_API_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "APIS",
+			Handler:       _APIService_APIS_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/proto/api.proto",
 }

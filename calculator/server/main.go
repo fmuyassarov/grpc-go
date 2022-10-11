@@ -37,3 +37,22 @@ func (s *Server) API(ctx context.Context, in *pb.CalculatorRequest) (*pb.Calcula
 		Sum: in.X + in.Y,
 	}, nil
 }
+
+func (s *Server) Primes(in *pb.PrimeRequest, stream pb.CalculatorService_PrimesServer) error {
+	log.Print("prime server stream is invoked")
+
+	var k int32 = 2
+	N := in.PrimeNumber
+
+	for N > 1 {
+		if N%k == 0 {
+			stream.Send(&pb.CalculatorResponse{
+				Sum: k,
+			})
+			N = N / k
+		} else {
+			k = k + 1
+		}
+	}
+	return nil
+}

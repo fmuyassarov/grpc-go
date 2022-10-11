@@ -18,7 +18,8 @@ func main() {
 
 	c := pb.NewAPIServiceClient(conn)
 
-	doGreet(c)
+	// doGreet(c)
+	doGreatManyTimes(c)
 
 	defer conn.Close()
 
