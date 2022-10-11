@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "github.com/fmuyassarov/grpc-go";
+
+message APIRequest {
+    string protocol = 1;
+}
+
+message APIResponse {
+    string result = 1;
+}
+
+service APIService {
+    rpc API (APIRequest) returns (APIResponse);
+}
